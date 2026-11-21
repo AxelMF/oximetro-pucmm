@@ -1,0 +1,8 @@
+firmware/**/config.h
+build/
+.pio/
+*.bin
+*.elf
+.DS_Store
+Thumbs.db
+.vscode/
