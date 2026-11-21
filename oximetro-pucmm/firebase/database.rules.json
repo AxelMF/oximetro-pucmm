@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "oximetros": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "historial": {
+          ".indexOn": ["t"],
+          "$registro": {
+            ".validate": "newData.hasChildren(['t', 'bpm', 'calidad'])"
+          }
+        }
+      }
+    }
+  }
+}

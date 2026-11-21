@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oxímetro PUCMM</title>
+  <meta name="description" content="Pulso y saturación de oxígeno en tiempo real desde el oxímetro ESP32-S3 + MAX30101.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+  <!-- ===================== ACCESO ===================== -->
+  <main id="vista-login" class="acceso" hidden>
+    <form id="form-login" class="acceso__tarjeta" novalidate>
+      <h1 class="acceso__titulo">Oxímetro PUCMM</h1>
+      <p class="acceso__texto">Entra con la cuenta del dispositivo para ver sus lecturas.</p>
+
+      <label class="campo">
+        <span>Correo</span>
+        <input id="login-email" type="email" autocomplete="username" required>
+      </label>
+
+      <label class="campo">
+        <span>Contraseña</span>
+        <input id="login-clave" type="password" autocomplete="current-password" required>
+      </label>
+
+      <p id="login-error" class="acceso__error" role="alert" hidden></p>
+
+      <button id="btn-entrar" class="boton boton--primario" type="submit">Entrar</button>
+      <a class="acceso__demo" href="?demo">Ver con datos de demostración</a>
+    </form>
+  </main>
+
+  <!-- ===================== PANEL ===================== -->
+  <div id="vista-panel" class="panel" hidden>
+
+    <header class="barra">
+      <h1 class="barra__marca">Oxímetro PUCMM</h1>
+      <p class="barra__dispositivo">
+        <span id="punto-conexion" class="punto" aria-hidden="true"></span>
+        <span id="txt-conexion">Conectando…</span>
+      </p>
+      <button id="btn-salir" class="boton boton--discreto" type="button">Cerrar sesión</button>
+    </header>
+
+    <p id="aviso" class="aviso" role="alert" hidden></p>
+
+    <main class="contenido">
+
+      <!-- Lectura actual -->
+      <section class="lecturas" aria-label="Lectura actual">
+        <article class="lectura lectura--pulso">
+          <h2 class="lectura__nombre">
+            Pulso
+            <span id="latido" class="latido" aria-hidden="true"></span>
+          </h2>
+          <p class="lectura__valor"><span id="v-bpm">--</span><span class="lectura__unidad">lpm</span></p>
+        </article>
+
+        <article class="lectura lectura--oxigeno">
+          <h2 class="lectura__nombre">Saturación de oxígeno</h2>
+          <p class="lectura__valor"><span id="v-spo2">--</span><span class="lectura__unidad">%</span></p>
+        </article>
+
+        <div class="detalle">
+          <p id="estado" class="estado" aria-live="polite">Esperando datos del dispositivo</p>
+          <dl class="detalle__lista">
+            <div><dt>Perfusión</dt><dd id="v-pi">--</dd></div>
+            <div><dt>Calidad de señal</dt><dd><span id="v-calidad">--</span><meter id="m-calidad" min="0" max="100" low="50" high="80" optimum="100" value="0"></meter></dd></div>
+            <div><dt>WiFi</dt><dd id="v-rssi">--</dd></div>
+            <div><dt>Firmware</dt><dd id="v-firmware">--</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <!-- Tendencia -->
+      <section class="trazo" aria-labelledby="titulo-trazo">
+        <div class="trazo__cabecera">
+          <h2 id="titulo-trazo" class="seccion__titulo">Tendencia</h2>
+
+          <ul class="leyenda">
+            <li class="leyenda__item leyenda__item--pulso">Pulso</li>
+            <li class="leyenda__item leyenda__item--oxigeno">SpO₂</li>
+            <li class="leyenda__item leyenda__item--minima">SpO₂ mínima</li>
+          </ul>
+
+          <fieldset class="rangos">
+            <legend class="sr">Periodo</legend>
+            <label><input type="radio" name="rango" value="vivo" checked><span>En vivo</span></label>
+            <label><input type="radio" name="rango" value="3600000"><span>1 h</span></label>
+            <label><input type="radio" name="rango" value="86400000"><span>24 h</span></label>
+            <label><input type="radio" name="rango" value="604800000"><span>7 días</span></label>
+          </fieldset>
+        </div>
+
+        <div class="papel">
+          <canvas id="grafica" aria-label="Gráfica de pulso y saturación de oxígeno en el tiempo" role="img"></canvas>
+          <p id="grafica-vacia" class="papel__vacio" hidden></p>
+        </div>
+      </section>
+
+      <!-- Resumen -->
+      <section class="resumen" aria-labelledby="titulo-resumen">
+        <div class="resumen__cabecera">
+          <h2 id="titulo-resumen" class="seccion__titulo">Resumen del periodo</h2>
+          <button id="btn-csv" class="boton boton--discreto" type="button" disabled>Descargar CSV</button>
+        </div>
+
+        <dl class="cifras">
+          <div><dt>Pulso promedio</dt><dd id="r-bpm">--</dd></div>
+          <div><dt>Rango de pulso</dt><dd id="r-rango">--</dd></div>
+          <div><dt>SpO₂ promedio</dt><dd id="r-spo2">--</dd></div>
+          <div><dt>SpO₂ más baja</dt><dd id="r-spo2min">--</dd></div>
+          <div><dt>Tiempo medido</dt><dd id="r-tiempo">--</dd></div>
+        </dl>
+
+        <div class="tabla">
+          <table>
+            <caption class="sr">Últimos registros del historial</caption>
+            <thead>
+              <tr><th scope="col">Hora</th><th scope="col">Pulso</th><th scope="col">SpO₂</th><th scope="col">Mínima</th><th scope="col">Calidad</th></tr>
+            </thead>
+            <tbody id="tabla-cuerpo"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <p>Proyecto académico de Ingeniería Mecatrónica. Las lecturas son experimentales y la SpO₂ no está calibrada: no usar para diagnóstico médico.</p>
+    </footer>
+  </div>
+
+</body>
+</html>
